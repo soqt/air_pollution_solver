@@ -1,3 +1,5 @@
+# Group member: Yumeng Wang, Xuefei Han, Tianjing Cai
+# CSE 415 sp17
 
 #<METADATA>
 from math import sqrt
@@ -19,7 +21,8 @@ It is designed to work according to the QUIET tools interface, Version 0.1.
 def can_move(s, From, To):
   '''Tests whether it's legal to move to next state'''
   try:
-
+    if s.d[From] == 400 or abs(s.d[To] - s.d[From]) > 30: return False
+    '''Find combination of s.d[To]'''
   except (Exception) as e:
    print(e)
 
@@ -27,7 +30,7 @@ def move(s,From, To):
   '''Assuming it's legal to make the move, this computes
      the new state resulting from moving a tile'''
 
-  return news # return new state
+  return # return new state
 
 def goal_test(s):
   '''Test for a goal state.'''
@@ -48,15 +51,16 @@ class Operator:
     def apply(self, s):
         return self.state_transf(s)
 
-#<STATE>
+#<STATE>#
 class State():
   def __init__(self, d):
     self.d = d
 
+
   def __str__(self):
     # Produces a textual description of a state.
     d = self.d
-    txt =
+    txt = ''
     return txt
 
   def __eq__(self, s2):
@@ -78,7 +82,10 @@ class State():
 #</STATE>
 
 #<INITIAL_STATE>
-INITIAL_STATE = []
+INITIAL_STATE = {'factory': 35, "emission": 400, "economy": 10000, "growth-rate": 7}
+
+POLLUTANT_RESOURCE = {'工厂1': 15000, '工厂2': 12000, '工厂3': 13000, 'vehicle': 1000, 'household': 200,
+                      'temple': 3000, 'other': 200}
 CREATE_INITIAL_STATE = lambda: State(INITIAL_STATE)
 #</INITIAL_STATE>
 
@@ -91,14 +98,14 @@ GOAL_STATE = []
 #<GOAL_STATE>
 
 #<OPERATORS>
-move_combinations = [(p, q) for p in range(9) for q in range(9) if p != q]
-OPERATORS = [Operator("Move from " + str(p) + " to " + str(q),
-                      lambda s, p1=p, q1=q: can_move(s, p1, q1),
+combinations = [(p, q) for p in range(400) for q in range(400)]
+OPERATORS = [Operator("Change AOI(total emission) from "+ str(p) + " to " + str(q),
+                      lambda s, p1=p,q1=q: can_move(s, p1,q1),
                       # The default value construct is needed
                       # here to capture the values of p&q separately
                       # in each iteration of the list comp. iteration.
                       lambda s, p1=p, q1=q: move(s, p1, q1))
-             for (p, q) in move_combinations]
+             for (p, q) in combinations]
 #</OPERATORS>
 
 #<GOAL_MESSAGE_FUNCTION>
