@@ -187,7 +187,7 @@ MIN_ECON = 100000
 
 #<INITIAL_STATE>
 INITIAL_STATE = State({'factory': 2700, 'vehicle': 5610000, 'temple': 4,
-                       'population': 20000000, "emission": 3500000, "economy": })
+                       'population': 20000000, "emission": 3500000, "economy": 88888888})
 CREATE_INITIAL_STATE = lambda: INITIAL_STATE
 
 
