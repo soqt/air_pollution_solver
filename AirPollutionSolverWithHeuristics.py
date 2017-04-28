@@ -8,7 +8,7 @@ QUIET_VERSION = "0.1"
 PROBLEM_NAME = "Air pollution solver with Heuristics"
 PROBLEM_VERSION = "0.1"
 PROBLEM_AUTHORS = ['Yumeng Wang', 'Xuefei Han', 'Tianjing Cai']
-PROBLEM_CREATION_DATE = "26-APR-2017"
+PROBLEM_CREATION_DATE = "28-APR-2017"
 PROBLEM_DESC=\
 '''This formulation of the Air pollution solver uses generic
 Python 3 constructs and has been tested with Python 3.6.
@@ -18,134 +18,196 @@ It is designed to work according to the QUIET tools interface, Version 0.1.
 
 
 
-def can_move(s, From, To):
-  '''Tests whether it's legal to move to next state'''
+
+def can_move(s,factor,unit):
   try:
-    if s.d[From] == 400 or abs(s.d[To] - s.d[From]) > 30: return False
-    '''Find combination of s.d[To]'''
+    d1 = s.d
+    if factor == 'population':
+      ratio = d1['factory']/(d1['population'] + unit)
+      if ratio < MIN_FACTORY_POPULATION_RATIO: return False
+      else: return True
+
+    if factor == 'temple':
+      newTemple = d1[factor] +unit
+      if newTemple < MIN_TEMPLES or newTemple > MAX_TEMPLE: return False
+
+    if factor == 'vehicle':
+      ratio = (d1[factor] + unit)/d1['population']
+      if ratio < MIN_VEHICLE_POPULATION_RATIO: return False
+      else:return True
+
+    newUnits = d1[factor] + unit
+
+    currentEcon = d1['economy']
+    currentEmission = d1['emission']
+
+    if factor=='economy' and unit < 0:
+      growthRate = abs(unit/currentEcon)
+      if growthRate > 0.07: return False
+
+    newEcon = newUnits * s.getUnitEconomyGrowthFor(factor)
+    newEmission = newUnits * s.getUnitEmmisionFor(factor)
+
+    if newEmission > MAX_EMISSION: return False
+
+
+    if newEmission/newEcon > 1:
+      return False
+    elif newEmission < currentEmission:
+      return True
+    elif newEcon > currentEcon:
+      return True
+    else:
+      return False
+
+    return False
   except (Exception) as e:
-   print(e)
+    print(e)
 
-def move(s,From, To):
-  '''Assuming it's legal to make the move, this computes
-     the new state resulting from moving a tile'''
 
-  return # return new state
+
+def move(s,factor,unit):
+  news = s.__copy__()
+  d1 = news.d
+
+  d1[factor] += unit
+  d1['economy'] = d1['economy'] + s.getUnitEconomyGrowthFor(factor) * unit
+  d1['emission'] = d1['emission'] + s.getUnitEmmisionFor(factor) * unit
+
+
+  return news
+
+
 
 def goal_test(s):
-  '''Test for a goal state.'''
-  return s.d == GOAL_STATE
+  return s.d['emission'] == 0
 
 def goal_message(s):
-  return "Problem solved"
+  return "The Air pollution problem is Triumphant!"
+
+def current_list(s):
+  return s.d
+
 
 class Operator:
-    def __init__(self, name, precond, state_transf):
-        self.name = name
-        self.precond = precond
-        self.state_transf = state_transf
+  def __init__(self, name, precond, state_transf):
+    self.name = name
+    self.precond = precond
+    self.state_transf = state_transf
 
-    def is_applicable(self, s):
-        return self.precond(s)
+  def is_applicable(self, s):
+    return self.precond(s)
 
-    def apply(self, s):
-        return self.state_transf(s)
+  def apply(self, s):
+    return self.state_transf(s)
+
+
+def h1(state):
+  # print(type(state))
+  now = state.d
+  emi = now['emission']
+  eco = now['economy']
+  return emi/eco
+
+
 
 #<STATE>#
 class State():
-  def __init__(self, d):
+  def __init__(self,d):
     self.d = d
 
-
   def __str__(self):
-    # Produces a textual description of a state.
     d = self.d
-    txt = ''
+    txt = 'This city current has '
+    for k, v in d.items():
+      txt += str(v) + " " + str(k) + "; "
     return txt
 
-  def __eq__(self, s2):
-    if not (type(self)==type(s2)): return False
-    d1 = self.d; d2 = s2.d
-    return d1 == d2
+
+  def __eq__(self,s2):
+    if not (type(self)==type(s2)):
+      return False
+    d1 = self.d
+    d2 = s2.d
+    return d1==d2
+
 
   def __hash__(self):
     return (str(self)).__hash__()
 
-  def __copy__(self):
-    # Performs an appropriately deep copy of a state,
-    # for use by operators in creating new states.
-    news = State([n for n in self.d])
-    return news
 
-  def __lt__(self, other):
-     return  self.d < other.d
+  def __copy__(self):
+    d1 = self.d
+    news = {}
+
+    for k, v in d1.items():
+      news[k] = v
+    return State(news)
+
+
+  def getUnitEmmisionFor(self,factor):
+    if factor == 'factory':
+      return 910
+    if factor == 'vehicle':
+      return 120
+    if factor == 'temple':
+      return 44
+    if factor == 'population':
+      return 0.175
+
+  def getUnitEconomyGrowthFor(self,factor):
+    if factor == 'factory':
+      return 500
+    if factor == 'vehicle':
+      return 10
+    if factor == 'temple':
+      return 50
+    if factor == 'population':
+      return 30
+
 #</STATE>
 
-#<INITIAL_STATE>
-INITIAL_STATE = {'factory': 35, "emission": 400, "economy": 10000, "growth-rate": 7}
 
-POLLUTANT_RESOURCE = {'工厂1': 15000, '工厂2': 12000, '工厂3': 13000, 'vehicle': 1000, 'household': 200,
-                      'temple': 3000, 'other': 200}
-CREATE_INITIAL_STATE = lambda: State(INITIAL_STATE)
-#</INITIAL_STATE>
+#<COMMON_DATA>
+MIN_POPULATION = 300
+MAX_POPULATION = 30000
+
+MIN_TEMPLES = 3
+
+MIN_VEHICLE_POPULATION_RATIO = 0.2   # 1 car for five people
+MIN_FACTORY_POPULATION_RATIO = 0.002 # 1 factory for 2000 K people
+
+MAX_TEMPLE = 8
+MAX_EMISSION = 30000
+
+MIN_ECON = 100000
+#</COMMON DATA>
+
+
+
+#<INITIAL_STATE>
+INITIAL_STATE = State({'factory': 2700, 'vehicle': 5610000, 'temple': 4,
+                       'population': 20000000, "emission": 3500000, "economy": })
+CREATE_INITIAL_STATE = lambda: INITIAL_STATE
+
+
+#<OPERATORS>
+combinations = [('factory',1),('factory',-1),
+                ('vehicle',1),('vehicle',-1),
+                ('temple',1),('temple',-1),
+                ('population', 10)]
+
+OPERATORS = [Operator("Change "+ p + " for " + str(q) + " unit",
+                      lambda s, p1=p, q1=q: can_move(s, p1, q1),
+                      lambda s, p1=p, q1=q: move(s, p1, q1))
+             for (p,q) in combinations]
+
 
 #<GOAL_TEST>
 GOAL_TEST = lambda s: goal_test(s)
-#</GOAL_TEST>
-
-#<GOAL_STATE>
-GOAL_STATE = []
-#<GOAL_STATE>
-
-#<OPERATORS>
-combinations = [(p, q) for p in range(400) for q in range(400)]
-OPERATORS = [Operator("Change AOI(total emission) from "+ str(p) + " to " + str(q),
-                      lambda s, p1=p,q1=q: can_move(s, p1,q1),
-                      # The default value construct is needed
-                      # here to capture the values of p&q separately
-                      # in each iteration of the list comp. iteration.
-                      lambda s, p1=p, q1=q: move(s, p1, q1))
-             for (p, q) in combinations]
-#</OPERATORS>
 
 #<GOAL_MESSAGE_FUNCTION>
 GOAL_MESSAGE_FUNCTION = lambda s: goal_message(s)
-#</GOAL_MESSAGE_FUNCTION>
 
-#<HEURISTICS>
-def h_euclidean(s):
-    sum = 0
-    current_position = 0
-    for i in s.d:
-        final_position = GOAL_STATE.index(i)
-        sum += sqrt(((current_position % 3) - (final_position % 3))**2
-                     + (int(current_position / 3) - int(final_position / 3))**2)
-        current_position += 1
-    return sum
-
-def h_hamming(s):
-    sum = 0
-    state = s.d
-    for i in state:
-        index = state.index(i)
-        if not GOAL_STATE[index] == i:
-            sum += 1
-    return sum
-
-def h_manhattan(s):
-    sum = 0
-    state = s.d
-    for i in state:
-        current_index = state.index(i)
-        goal_index = GOAL_STATE.index(i)
-        row_d = abs(goal_index % 3 - current_index % 3)
-        col_d = abs(int(goal_index/3) - int(current_index/3))
-        sum += row_d + col_d
-    return sum
-
-def h_custom(s):
-    return 2 * h_manhattan(s) + 2* h_euclidean(s) + h_hamming(s)
-
-
-HEURISTICS = {'h_euclidean': h_euclidean, 'h_hamming': h_hamming, 'h_manhattan' : h_manhattan, 'h_custom': h_custom}
-#</HEURISTICS>
+#<HEURISTICS_HASH>
+HEURISTICS = {'h1': h1}
