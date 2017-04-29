@@ -1,4 +1,4 @@
-# Astar.py, April 2017 
+# Astar.py, April 2017
 # Based on ItrDFS.py, Ver 0.3, April 11, 2017.
 
 ''' 
@@ -20,18 +20,18 @@ Assignment 3 Part II-3.
 import sys
 from queue import PriorityQueue
 
-# DO NOT CHANGE THIS SECTION 
+# DO NOT CHANGE THIS SECTION
 if sys.argv==[''] or len(sys.argv)<2:
     import AirPollutionSolverWithHeuristics as Problem
-    heuristics = lambda s: Problem.HEURISTICS['h1'](s)
+    heuristics = lambda s: Problem.HEURISTICS[0](s)
     # import TowerOfHanoi as Problem
     # heuristics = lambda s: Problem.HEURISTICS['h_0'](s)
-    
+
 else:
     import importlib
     Problem = importlib.import_module(sys.argv[1])
     heuristics = lambda s: Problem.HEURISTICS[sys.argv[2]](s)
-    
+
 
 
 
@@ -56,13 +56,13 @@ def runAStar():
 # TODO: finish A star implementation
 def AStar(initial_state):
     global COUNT, BACKLINKS
-    # TODO: initialze and put first state into 
+    # TODO: initialze and put first state into
     # priority queue with respective priority
     # add any auxiliary data structures as needed
     OPEN = PriorityQueue()
     CLOSED = PriorityQueue()
 
-    state_string = initial_state.__str__() 
+    state_string = initial_state.__str__()
     STRING_STATE = {state_string:initial_state} # create a hashtable to store (state string: state)
 
     GVALUE = {state_string: 0}
@@ -81,7 +81,7 @@ def AStar(initial_state):
         S_string = S_pair[1]
         S = STRING_STATE[S_string]
 
-        # DO NOT CHANGE THIS SECTION: begining 
+        # DO NOT CHANGE THIS SECTION: begining
         if Problem.GOAL_TEST(S):
             print(Problem.GOAL_MESSAGE_FUNCTION(S))
             path = backtrace(S)
@@ -119,6 +119,7 @@ def AStar(initial_state):
                     old_parent = BACKLINKS[new_state]
                     old_parent_string = old_parent.__str__()
                     if (old_parent != -1):
+
                         temp = FVALUE[new_string] - GVALUE[old_parent_string] - 1 + GVALUE[S_string] + 1
                     else:
                         temp = FVALUE[new_string]
@@ -171,7 +172,7 @@ def backtrace(S):
     for s in path:
         print(s)
     print("\nPath length = "+str(len(path)-1))
-    return path    
+    return path
 
 if __name__=='__main__':
     path, name = runAStar()

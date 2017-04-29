@@ -6,11 +6,11 @@
 import unittest, os, sys, importlib
 
 '''remove the file extension if it was included'''
-problem_name = os.path.splitext(sys.argv[1])[0]
+problem_name = "AirPollutionSolverWithHeuristics"
 
 '''import the problem'''
 problem = importlib.import_module(problem_name)
-del(sys.argv[1])
+# del(sys.argv[1])
 
 class TestCases(unittest.TestCase):
 	

@@ -17,53 +17,54 @@ It is designed to work according to the QUIET tools interface, Version 0.1.
 #</METADATA>
 
 
-
-
-def can_move(s,factor,unit):
+def can_move(s,factor,units):
   try:
-    d1 = s.d
+    currentUnitsForFactor = s.getNumberOf(factor)
+    if factor == 'greenbelt':
+      return True
+
     if factor == 'population':
-      ratio = d1['factory']/(d1['population'] + unit)
-      if ratio < MIN_FACTORY_POPULATION_RATIO: return False
-      else: return True
+      if s.getNumberOf('population') + units > MAX_POPULATION: return False
+      ratio = s.getNumberOf('factory') / (s.getNumberOf('population') + units)
+      if ratio < BALANCED_FACTORY_POPULATION_RATIO: return False
 
     if factor == 'temple':
-      newTemple = d1[factor] +unit
+      newTemple = currentUnitsForFactor + units
       if newTemple < MIN_TEMPLES or newTemple > MAX_TEMPLE: return False
 
     if factor == 'vehicle':
-      ratio = (d1[factor] + unit)/d1['population']
+      ratio = (currentUnitsForFactor + units)/ s.getNumberOf('population')
       if ratio < MIN_VEHICLE_POPULATION_RATIO: return False
-      else:return True
+      if ratio > MAX_VEHICLE_POPULATION_RATIO: return False
 
-    newUnits = d1[factor] + unit
+    if factor == 'factory':
+      if units > 0:
+        ratio = (currentUnitsForFactor + units) / s.getNumberOf('population')
+        if ratio > BALANCED_FACTORY_POPULATION_RATIO: return True
+        else: return False
+      if units < 0:
+        ratio = (currentUnitsForFactor + units) / s.getNumberOf('population')
+        if ratio < BALANCED_FACTORY_POPULATION_RATIO: return False
 
-    currentEcon = d1['economy']
-    currentEmission = d1['emission']
 
-    if factor=='economy' and unit < 0:
-      growthRate = abs(unit/currentEcon)
-      if growthRate > 0.07: return False
 
-    newEcon = newUnits * s.getUnitEconomyGrowthFor(factor)
-    newEmission = newUnits * s.getUnitEmmisionFor(factor)
+    newEmission = s.getEmission() + units * s.getUnitEmissionFor(factor)
+    if newEmission > MAX_EMISSION: return False
+    newEconomy = s.getEconomy() + units * s.getUnitEconomyGrowthFor(factor)
+    if newEconomy < s.getEconomy() * 0.7: return False
+
+    if newEmission/newEconomy > INITIAL_RATIO: return False
+
+    return True
+
+
+    # if current economy decreases too much, return false
 
     # debugging
-    print(currentEmission/currentEcon)
-    print(newEmission/newEcon)
+    # print(currentEmission/currentEcon)
+    # print(newEmission/newEcon)
     # /debugging
-    if newEmission > MAX_EMISSION: return False
 
-    if newEmission/newEcon > 1:
-      return False
-    elif newEmission < currentEmission:
-      return True
-    elif newEcon > currentEcon:
-      return True
-    else:
-      return False
-
-    return False
   except (Exception) as e:
     print(e)
 
@@ -71,11 +72,10 @@ def can_move(s,factor,unit):
 
 def move(s,factor,unit):
   news = s.__copy__()
-  d1 = news.d
-
-  d1[factor] += unit
-  d1['economy'] = d1['economy'] + s.getUnitEconomyGrowthFor(factor) * unit
-  d1['emission'] = d1['emission'] + s.getUnitEmmisionFor(factor) * unit
+  d = news.d
+  d[factor] += unit
+  d['economy'] = d['economy'] + s.getUnitEconomyGrowthFor(factor) * unit
+  d['emission'] = d['emission'] + s.getUnitEmissionFor(factor) * unit
 
 
   return news
@@ -83,7 +83,7 @@ def move(s,factor,unit):
 
 
 def goal_test(s):
-  return (s.d['emission'] / s.d['economy'] > 1)
+  return (s.d['emission'] / s.d['economy'] <= GOAL_RATIO)
   # return s.d['emission'] == 0
 
 def goal_message(s):
@@ -111,7 +111,7 @@ def h1(state):
   now = state.d
   emi = now['emission']
   eco = now['economy']
-  return emi/eco
+  return (emi/eco - GOAL_RATIO) * 1000000000
 
 
 
@@ -124,7 +124,8 @@ class State():
     d = self.d
     txt = 'This city current has '
     for k, v in d.items():
-      txt += str(v) + " " + str(k) + "; "
+      txt += str(v) + " " + str(k) + ", "
+    txt += " with emission of " + str(d['emission']) + " tons and annual GDP $" + str(d['economy']) + "."
     return txt
 
 
@@ -148,60 +149,95 @@ class State():
       news[k] = v
     return State(news)
 
+  def getNumberOf(self, factor):
+    d = self.d
+    if factor == 'factory':
+      return d['factory']
+    if factor == 'vehicle':
+      return d['vehicle']
+    if factor == 'temple':
+      return d['temple']
+    if factor == 'population':
+      return d['population']
+    if factor == 'greenbelt':
+      return d['greenbelt']
+    return None
 
-  def getUnitEmmisionFor(self,factor):
+  def getEmission(self):
+    d = self.d
+    return d['emission']
+
+  def getEconomy(self):
+    d = self.d
+    return d['economy']
+
+  def getUnitEmissionFor(self,factor):
     if factor == 'factory':
       return 910
     if factor == 'vehicle':
-      return 120
+      return 0.12
     if factor == 'temple':
       return 44
     if factor == 'population':
-      return 0.175
+      return 0.075
+    if factor == 'greenbelt':
+      return -10
+    return None
 
   def getUnitEconomyGrowthFor(self,factor):
     if factor == 'factory':
-      return 500
+      return 50000000
     if factor == 'vehicle':
-      return 10
+      return 20000
     if factor == 'temple':
-      return 50
+      return 5000000
     if factor == 'population':
-      return 30
+      return 100000
+    if factor == 'greenbelt':
+      return -500000
+    return None
 
 #</STATE>
 
 
+#<INITIAL_STATE>
+INITIAL_STATE = State({
+  'factory': 2700, 'vehicle': 5610000, 'temple': 4, 'greenbelt': 500,'population': 20000000,
+  "emission": 3105476, "economy": 2246970000000
+})
+CREATE_INITIAL_STATE = lambda: INITIAL_STATE
+
 #<COMMON_DATA>
-MIN_POPULATION = 300
-MAX_POPULATION = 30000
+INITIAL_RATIO = INITIAL_STATE.getEmission()/INITIAL_STATE.getEconomy()
+GOAL_RATIO = INITIAL_RATIO * 0.7
+
+MAX_EMISSION = INITIAL_STATE.getEmission() * 1.2
+
+MAX_POPULATION = INITIAL_STATE.getNumberOf('population') * 1.5
 
 MIN_TEMPLES = 3
-
-MIN_VEHICLE_POPULATION_RATIO = 0.2   # 1 car for five people
-MIN_FACTORY_POPULATION_RATIO = 0.002 # 1 factory for 2000 K people
-
 MAX_TEMPLE = 8
-MAX_EMISSION = 30000
 
-MIN_ECON = 100000
+MIN_VEHICLE_POPULATION_RATIO = 0.1   # on average 1 car per 10 people
+MAX_VEHICLE_POPULATION_RATIO = 0.7  # on average 7 car serves 10 people
+
+
+MAX_FACTORY_POPULATION_RATIO = INITIAL_STATE.getNumberOf('factory') / INITIAL_STATE.getNumberOf('population')
+BALANCED_FACTORY_POPULATION_RATIO = 0.00005 # on average 5 factory for 100 K people
+
+
+
 #</COMMON DATA>
 
-
-
-#<INITIAL_STATE>
-INITIAL_STATE = State({'factory': 2700, 'vehicle': 5610000, 'temple': 4,
-                       'population': 20000000, "emission": 3500000, "economy": 657450200})
-CREATE_INITIAL_STATE = lambda: INITIAL_STATE
 
 
 #<OPERATORS>
 combinations = [('factory',1),('factory',-1),
                 ('vehicle',1),('vehicle',-1),
                 ('temple',1),('temple',-1),
-                ('population', 10)]
+                ('population', 100000), ('greenbelt',1), ('greenbelt', - 1)]
 
-OPERATORS = [Operator("Change "+ p + " for " + str(q) + " unit",
+OPERATORS = [Operator("Change "+ p + " : " + str(q) + " unit",
                       lambda s, p1=p, q1=q: can_move(s, p1, q1),
                       lambda s, p1=p, q1=q: move(s, p1, q1))
              for (p,q) in combinations]
@@ -214,4 +250,4 @@ GOAL_TEST = lambda s: goal_test(s)
 GOAL_MESSAGE_FUNCTION = lambda s: goal_message(s)
 
 #<HEURISTICS_HASH>
-HEURISTICS = {'h1': h1}
+HEURISTICS = [h1]
