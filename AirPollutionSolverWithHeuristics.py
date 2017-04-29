@@ -48,8 +48,11 @@ def can_move(s,factor,unit):
     newEcon = newUnits * s.getUnitEconomyGrowthFor(factor)
     newEmission = newUnits * s.getUnitEmmisionFor(factor)
 
+    # debugging
+    print(currentEmission/currentEcon)
+    print(newEmission/newEcon)
+    # /debugging
     if newEmission > MAX_EMISSION: return False
-
 
     if newEmission/newEcon > 1:
       return False
@@ -80,7 +83,8 @@ def move(s,factor,unit):
 
 
 def goal_test(s):
-  return s.d['emission'] == 0
+  return (s.d['emission'] / s.d['economy'] > 1)
+  # return s.d['emission'] == 0
 
 def goal_message(s):
   return "The Air pollution problem is Triumphant!"
@@ -187,7 +191,7 @@ MIN_ECON = 100000
 
 #<INITIAL_STATE>
 INITIAL_STATE = State({'factory': 2700, 'vehicle': 5610000, 'temple': 4,
-                       'population': 20000000, "emission": 3500000, "economy": 88888888})
+                       'population': 20000000, "emission": 3500000, "economy": 657450200})
 CREATE_INITIAL_STATE = lambda: INITIAL_STATE
 
 
